@@ -1,10 +1,30 @@
+import os
 from mcp.server.fastmcp import FastMCP
-from terminal import run_command, command_result
+from terminal import terminal_run_command, command_result
 
-mcp = FastMCP("Terminal MCP", "1.0.0")
+mcp = FastMCP("Terminal MCP", "1.0.1")
+current_directory = os.getcwd() # Initialize with the current working directory
 
 @mcp.tool()
-def run_command_tool(command: list[str] | str) -> command_result:
+def change_directory(path: str) -> command_result:
+    """
+    Changes the current working directory.
+    
+    Args:
+        path (str): The path to change to.
+        
+    Returns:
+        command_result: The result of the change directory command.
+    """
+    global current_directory 
+    result = terminal_run_command(["cd", path], cwd=current_directory)
+    if result.success:
+        new_path = os.path.abspath(os.path.join(current_directory, path))
+        current_directory = new_path
+    return result
+
+@mcp.tool()
+def run_command(command: list[str] | str) -> command_result:
     """
     Runs a command in the terminal and returns the result.
     
@@ -14,4 +34,22 @@ def run_command_tool(command: list[str] | str) -> command_result:
     Returns:
         command_result: The result of the command execution.
     """
-    return run_command(command)
+    # If the command is a change directory command,
+    if (isinstance(command, list) and command[0] == "cd"):
+        path = command[1] if len(command) > 1 else ""
+        return change_directory(path)
+    if (isinstance(command, str) and command.startswith("cd ")):
+        path = command[3:]
+        return change_directory(path)
+    else:
+        return terminal_run_command(command, current_directory)
+
+@mcp.tool()
+def get_current_directory() -> str:
+    """
+    Returns the current working directory.
+    
+    Returns:
+        str: The current working directory.
+    """
+    return current_directory
