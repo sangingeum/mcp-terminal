@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "Terminal Server": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "C:/dev/mcp-terminal",
+        "main.py"
+      ]
+    }
+  }
+}
