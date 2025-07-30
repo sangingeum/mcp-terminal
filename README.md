@@ -1,229 +1,290 @@
 # MCP Terminal Server
 
-A Model Context Protocol (MCP) server that enables Claude to execute terminal commands safely and retrieve structured results. This bridge allows AI assistants to interact with your local system through a controlled command execution interface.
+> A secure Model Context Protocol (MCP) server that bridges Claude AI with your local terminal, enabling safe command execution through a structured interface.
 
-## Features
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://python.org)
+[![MCP](https://img.shields.io/badge/MCP-1.12.2+-green.svg)](https://modelcontextprotocol.io)
+[![License](https://img.shields.io/badge/license-Open%20Source-brightgreen.svg)](#license)
 
-- **Secure Command Execution**: Run terminal commands through a structured MCP interface
-- **Smart Encoding Detection**: Automatically handles system encoding (including Korean and other non-ASCII characters)
-- **Structured Results**: Returns detailed command results with success status, output, errors, and return codes
-- **Cross-Platform**: Works on Windows, macOS, and Linux
-- **Error Handling**: Robust error handling with fallback encoding support
+## ✨ Features
 
-## Installation
+- 🛡️ **Secure Execution** - Commands run with user-level permissions only
+- 🌍 **Cross-Platform** - Works seamlessly on Windows, macOS, and Linux
+- 🔤 **Smart Encoding** - Handles international characters (Korean, Chinese, etc.)
+- 📊 **Structured Results** - Returns detailed command output with status codes
+- 🎯 **Directory Tracking** - Maintains current working directory state
+- ⚡ **Fast Integration** - Quick setup with Claude Desktop
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Python 3.13+
-- [uv](https://docs.astral.sh/uv/) package manager (recommended)
-- Claude Desktop (for MCP integration)
+- **Python 3.13+** - [Download here](https://python.org/downloads/)
+- **uv package manager** - [Install guide](https://docs.astral.sh/uv/getting-started/installation/)
+- **Claude Desktop** - [Download here](https://claude.ai/download)
 
-### Setup
+### Installation
 
-1. **Clone or create the project directory:**
+1. **Clone and setup the project:**
    ```bash
-   mkdir mcp-terminal
+   git clone <repository-url>
    cd mcp-terminal
-   ```
-
-2. **Install dependencies:**
-   ```bash
    uv sync
    ```
 
-   Or with pip:
-   ```bash
-   pip install "mcp[cli]>=1.12.2" "pydantic>=2.11.7"
+2. **Configure Claude Desktop:**
+   
+   Edit your Claude Desktop config file:
+   
+   | Platform | Config Location |
+   |----------|----------------|
+   | Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+   | macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+   | Linux | `~/.config/Claude/claude_desktop_config.json` |
+
+   Add this configuration:
+   ```json
+   {
+     "mcpServers": {
+       "Terminal Server": {
+         "command": "uv",
+         "args": [
+           "run",
+           "--directory",
+           "/absolute/path/to/mcp-terminal",
+           "main.py"
+         ]
+       }
+     }
+   }
    ```
 
-3. **Set Python version (if using uv):**
-   ```bash
-   echo "3.13" > .python-version
-   ```
+3. **Start using with Claude:**
+   - Restart Claude Desktop
+   - Start a new conversation
+   - Claude now has terminal access! 🎉
 
-## Configuration
+## 💡 Usage Examples
 
-### Claude Desktop Integration
+Once integrated, you can interact with your terminal through Claude naturally:
 
-Add the following configuration to your Claude Desktop config file:
+```
+You: "What files are in my current directory?"
+Claude: [Executes `ls` or `dir` and shows results]
 
-**Location:**
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+You: "Create a Python file that prints 'Hello World'"
+Claude: [Creates the file using appropriate commands]
 
-**Configuration:**
+You: "Show me the git status of this repository"
+Claude: [Runs `git status` and explains the output]
+
+You: "Navigate to my Documents folder and list the contents"
+Claude: [Changes directory and lists files]
+```
+
+## 🏗️ Architecture
+
+```
+mcp-terminal/
+├── 📄 main.py                    # MCP server entry point
+├── 🖥️ server.py                  # FastMCP server with tools
+├── 🔧 terminal.py                # Command execution engine
+├── 📦 pyproject.toml            # Dependencies & metadata
+├── ⚙️ claude_desktop_config.json # Claude integration config
+├── 🐍 .python-version           # Python version lock
+├── 📁 .venv/                   # Virtual environment
+└── 📚 README.md                # Documentation
+```
+
+## 🔌 API Reference
+
+### Core Tools
+
+#### `run_command(command: str | list[str]) -> command_result`
+Executes terminal commands with full output capture.
+
+**Example:**
+```python
+# Through Claude: "Run the command 'python --version'"
+# Returns structured result with stdout, stderr, and return code
+```
+
+#### `change_directory(path: str) -> command_result`
+Changes the current working directory with state persistence.
+
+**Example:**
+```python
+# Through Claude: "Navigate to the src folder"
+# Updates internal directory state
+```
+
+#### `get_current_directory() -> str`
+Returns the current working directory path.
+
+### Response Format
+
+All commands return a `command_result` object:
+
+```python
+{
+    "success": bool,      # True if command succeeded
+    "stdout": str,        # Standard output
+    "stderr": str,        # Error output  
+    "returncode": int     # Exit code (0 = success)
+}
+```
+
+## 🔧 Development
+
+### Running Tests
+
+Test the terminal functionality directly:
+
+```bash
+# Basic functionality test
+python -c "from terminal import terminal_run_command; print(terminal_run_command('echo Hello World'))"
+
+# Interactive testing
+python -c "from terminal import terminal_run_command_and_print; terminal_run_command_and_print('ls -la')"
+```
+
+### Extending the Server
+
+Add new tools to `server.py`:
+
+```python
+@mcp.tool()
+def my_custom_tool(param: str) -> dict:
+    """
+    Description of your custom tool.
+    
+    Args:
+        param: Parameter description
+        
+    Returns:
+        dict: Result description
+    """
+    # Your implementation here
+    return {"result": "success"}
+```
+
+### Debug Mode
+
+For troubleshooting command execution:
+
+```python
+from terminal import terminal_run_command_and_print
+
+# This will print detailed output for debugging
+terminal_run_command_and_print("your-command-here")
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| **Encoding errors with international characters** | System automatically detects encoding, but verify your locale settings |
+| **Permission denied errors** | Ensure Python has necessary permissions for the commands you're running |
+| **Command not found** | Verify the command exists in your system PATH |
+| **Claude Desktop not connecting** | Check config path is absolute, restart Claude Desktop, verify uv is in PATH |
+
+### Getting Help
+
+1. **Check the logs** - Look for error messages in Claude Desktop console
+2. **Verify paths** - Ensure all paths in config are absolute and correct
+3. **Test manually** - Run `uv run main.py` to test the server directly
+4. **Check permissions** - Verify file and directory permissions
+
+## 🚀 Advanced Configuration
+
+### Custom Python Installation
+
+If not using uv, modify the Claude Desktop config:
+
 ```json
 {
   "mcpServers": {
     "Terminal Server": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "/path/to/your/mcp-terminal",
-        "main.py"
-      ]
+      "command": "python",
+      "args": ["/absolute/path/to/mcp-terminal/main.py"],
+      "env": {
+        "PYTHONPATH": "/absolute/path/to/mcp-terminal"
+      }
     }
   }
 }
 ```
 
-> **Note**: Replace `/path/to/your/mcp-terminal` with the actual path to your project directory.
+### Environment Variables
 
-## Usage
+Set custom environment variables for the server:
 
-### Starting the Server
-
-#### With uv (Recommended)
-```bash
-uv run main.py
+```json
+{
+  "mcpServers": {
+    "Terminal Server": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/mcp-terminal", "main.py"],
+      "env": {
+        "CUSTOM_VAR": "value",
+        "PATH": "/custom/path:$PATH"
+      }
+    }
+  }
+}
 ```
 
-#### With Python directly
-```bash
-python main.py
-```
+## 📝 Changelog
 
-### Using with Claude Desktop
+### v1.0.1 (Current)
+- ✨ Directory state management
+- ✨ Added tools: ```change_directory```, ```get_current_directory```
+- ✨ Renamed a tool: ```run_command_tools``` -> ```run_command```
 
-1. Ensure the server is configured in your `claude_desktop_config.json`
-2. Restart Claude Desktop
-3. Start a new conversation with Claude
-4. Claude will automatically have access to the terminal functionality
+### v1.0.0 
+- ✨ Initial release
+- ✨ Cross-platform terminal command execution
+- ✨ MCP server integration with Claude Desktop
+- ✨ Smart encoding detection for international characters
 
-### Example Commands Through Claude
+## 🤝 Contributing
 
-Once integrated, you can ask Claude to:
+We welcome contributions! Here's how to get started:
 
-```
-"Check what files are in the current directory"
-"Show me the system information"
-"Create a new Python file called hello.py"
-"Run my Python script"
-"Check the git status of this repository"
-```
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
 
-Claude will execute these commands using the terminal server and provide structured results.
-
-## Project Structure
-
-```
-mcp-terminal/
-├── main.py                    # Entry point for the MCP server
-├── server.py                  # FastMCP server configuration
-├── terminal.py                # Core terminal execution logic
-├── pyproject.toml            # Project dependencies and metadata
-├── claude_desktop_config.json # Claude Desktop configuration
-├── .python-version           # Python version specification
-├── .gitignore               # Git ignore rules
-├── README.md                # This file
-├── uv.lock                  # Dependency lock file
-├── .venv/                   # Virtual environment (created by uv)
-└── __pycache__/            # Python cache files
-```
-
-## API Reference
-
-### `run_command_tool(command)`
-
-Executes a terminal command and returns structured results.
-
-**Parameters:**
-- `command` (str | list[str]): The command to execute. Can be a string or list of arguments.
-
-**Returns:**
-- `command_result`: A Pydantic model with the following fields:
-  - `success` (bool): Whether the command executed successfully
-  - `stdout` (str): Standard output from the command
-  - `stderr` (str): Standard error output from the command
-  - `returncode` (int): Exit code of the command
-
-**Example:**
-```python
-from terminal import run_command
-
-result = run_command("ls -la")
-if result.success:
-    print(result.stdout)
-else:
-    print(f"Error: {result.stderr}")
-```
-
-## Security Considerations
-
-- **Controlled Execution**: Commands are executed through a structured interface
-- **No Privilege Escalation**: Runs with the same permissions as the user
-- **Output Sanitization**: Handles encoding and special characters safely
-- **Error Containment**: Exceptions are caught and returned as structured errors
-
-> **Warning**: This tool allows command execution on your system. Only use it in trusted environments and be cautious about the commands you allow Claude to execute.
-
-## Development
-
-### Running Tests
+### Development Setup
 
 ```bash
-# Test the terminal functionality directly
-python -c "from terminal import run_command; print(run_command('echo Hello World'))"
+# Clone your fork
+git clone https://github.com/your-username/mcp-terminal.git
+cd mcp-terminal
+
+# Setup development environment
+uv sync --dev
+
+# Run tests
+uv run pytest  # (when tests are added)
 ```
 
-### Extending Functionality
+## 📄 License
 
-To add new tools to the MCP server, modify `server.py`:
+This project is open source and available under the [MIT License](LICENSE).
 
-```python
-@mcp.tool()
-def your_new_tool(param: str) -> dict:
-    """
-    Your new tool description.
-    """
-    # Implementation here
-    return {"result": "success"}
-```
+## 🙏 Acknowledgments
 
-## Troubleshooting
+- [Model Context Protocol](https://modelcontextprotocol.io) for the excellent specification
+- [Anthropic](https://anthropic.com) for Claude and the MCP ecosystem
+- [FastMCP](https://github.com/jlowin/fastmcp) for the server framework
 
-### Common Issues
+---
 
-1. **Encoding Errors**: The system automatically detects encoding, but if you encounter issues, check your system's locale settings.
+**Made with ❤️ for the Claude community**
 
-2. **Permission Denied**: Ensure the Python process has the necessary permissions to execute commands.
-
-3. **Command Not Found**: Make sure the commands you're trying to run are available in your system's PATH.
-
-4. **Claude Desktop Not Connecting**: 
-   - Verify the path in `claude_desktop_config.json` is correct
-   - Restart Claude Desktop after configuration changes
-   - Check that uv is installed and accessible from your PATH
-
-### Debug Mode
-
-To debug command execution:
-
-```python
-from terminal import run_command_and_print
-
-run_command_and_print("your-command-here")
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## License
-
-This project is open source. Feel free to modify and distribute according to your needs.
-
-## Changelog
-
-### v0.1.0
-- Initial release
-- Basic terminal command execution
-- MCP server integration
-- Smart encoding detection
-- Cross-platform support
+> Have questions or suggestions? Open an issue or start a discussion!
