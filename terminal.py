@@ -1,5 +1,6 @@
 import subprocess
 import os
+import locale
 import sys
 from pydantic import BaseModel, Field
 
@@ -10,22 +11,23 @@ class command_result(BaseModel):
     returncode: int = Field(default=1, description="Return code of the command execution")
     current_directory: str = Field(default=os.getcwd(), description="Current working directory after command execution")
 
-def _get_system_encoding():
-    return sys.stdout.encoding
+def _get_encoding_candidates() -> list[str]:
+    return [sys.stdout.encoding, sys.stdin.encoding, locale.getpreferredencoding()]
 
-def _decode_output(output_bytes, primary_encoding='utf-8'):
+def _decode_output(output_bytes, encoding_candidates : list[str] = [] ):
     """Try to decode output with multiple encodings"""
     if isinstance(output_bytes, str):
         return output_bytes
-        
-    encodings_to_try = [
-        primary_encoding,
+             
+    encodings_to_try_last = [
         'utf-8',
         'utf-16',
         'latin1',  # This rarely fails but may produce garbage
     ]
     
-    for encoding in encodings_to_try:
+    encoding_candidates.extend(encodings_to_try_last)
+    
+    for encoding in encoding_candidates:
         try:
             return output_bytes.decode(encoding)
         except (UnicodeDecodeError, UnicodeError, LookupError):
@@ -38,8 +40,8 @@ def _decode_output(output_bytes, primary_encoding='utf-8'):
         return str(output_bytes)
 
 def terminal_run_command(command : list[str] | str, cwd : str = os.getcwd(), change_directory : bool = False) -> command_result:
-    encoding = _get_system_encoding()
-    
+    encodings = _get_encoding_candidates()
+
     # First try with the detected encoding
     result = subprocess.run(command, 
                             shell=True, 
@@ -48,8 +50,8 @@ def terminal_run_command(command : list[str] | str, cwd : str = os.getcwd(), cha
                             text=False)  # Get bytes first
 
     # Decode the output properly
-    stdout = _decode_output(result.stdout, encoding)
-    stderr = _decode_output(result.stderr, encoding)
+    stdout = _decode_output(result.stdout, encodings)
+    stderr = _decode_output(result.stderr, encodings)
     success = (result.returncode == 0)
     
     if change_directory and success:
