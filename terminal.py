@@ -1,6 +1,6 @@
 import subprocess
-import locale
 import os
+import sys
 from pydantic import BaseModel, Field
 
 class command_result(BaseModel):
@@ -8,41 +8,61 @@ class command_result(BaseModel):
     stdout: str = Field(default="", description="Standard output of the command")
     stderr: str = Field(default="", description="Standard error output of the command")
     returncode: int = Field(default=1, description="Return code of the command execution")
-    
+    current_directory: str = Field(default=os.getcwd(), description="Current working directory after command execution")
+
 def _get_system_encoding():
-    """Get the best encoding for the current system"""
+    return sys.stdout.encoding
+
+def _decode_output(output_bytes, primary_encoding='utf-8'):
+    """Try to decode output with multiple encodings"""
+    if isinstance(output_bytes, str):
+        return output_bytes
+        
+    encodings_to_try = [
+        primary_encoding,
+        'utf-8',
+        'utf-16',
+        'latin1',  # This rarely fails but may produce garbage
+    ]
+    
+    for encoding in encodings_to_try:
+        try:
+            return output_bytes.decode(encoding)
+        except (UnicodeDecodeError, UnicodeError, LookupError):
+            continue
+    
+    # Last resort: decode with errors='replace'
     try:
-        # Try to get the preferred encoding from locale
-        encoding = locale.getpreferredencoding()
-        if encoding and encoding.lower() not in ['ascii', 'us-ascii']:
-            return encoding
+        return output_bytes.decode('utf-8', errors='replace')
     except:
-        pass
-    
-    # Fallback to UTF-8, which should handle Korean
-    return 'utf-8'
+        return str(output_bytes)
 
-
-def terminal_run_command(command : list[str] | str, cwd : str = os.getcwd()) -> command_result:
+def terminal_run_command(command : list[str] | str, cwd : str = os.getcwd(), change_directory : bool = False) -> command_result:
     encoding = _get_system_encoding()
-    try:
-        result = subprocess.run(command, 
-                                shell=True, 
-                                capture_output=True,
-                                encoding=encoding,
-                                cwd=cwd,
-                                text=True, 
-                                errors='replace')
     
-        return command_result(
-        success = (result.returncode == 0),
-        stdout = result.stdout, 
-        stderr = result.stderr, 
-        returncode = result.returncode    
-        )
+    # First try with the detected encoding
+    result = subprocess.run(command, 
+                            shell=True, 
+                            capture_output=True,
+                            cwd=cwd,
+                            text=False)  # Get bytes first
+
+    # Decode the output properly
+    stdout = _decode_output(result.stdout, encoding)
+    stderr = _decode_output(result.stderr, encoding)
+    success = (result.returncode == 0)
     
-    except Exception as e:
-        return command_result()
+    if change_directory and success:
+        path = command[1] if isinstance(command, list) and len(command) > 1 else command[3:] if isinstance(command, str) and command.startswith("cd ") else ""
+        cwd = os.path.abspath(os.path.join(cwd, path))
+    
+    return command_result(
+        success = success,
+        stdout = stdout, 
+        stderr = stderr, 
+        returncode = result.returncode,
+        current_directory = cwd
+    )
 
 def terminal_run_command_and_print(command : list[str] | str, cwd : str = os.getcwd()) -> None:
     result = terminal_run_command(command, cwd=cwd)
