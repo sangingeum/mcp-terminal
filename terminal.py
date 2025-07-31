@@ -2,6 +2,7 @@ import subprocess
 import os
 import locale
 import sys
+import shlex 
 from pydantic import BaseModel, Field
 
 class command_result(BaseModel):
@@ -41,30 +42,39 @@ def _decode_output(output_bytes, encoding_candidates : list[str] = [] ):
 
 def terminal_run_command(command : list[str] | str, cwd : str = os.getcwd(), change_directory : bool = False) -> command_result:
     encodings = _get_encoding_candidates()
+    try:
+        command = command if isinstance(command, list) else shlex.split(command) # Ensure command is a list
+        # First try with the detected encoding
+        result = subprocess.run(command, 
+                                shell=True, 
+                                capture_output=True,
+                                cwd=cwd,
+                                text=False)  # Get bytes first
 
-    # First try with the detected encoding
-    result = subprocess.run(command, 
-                            shell=True, 
-                            capture_output=True,
-                            cwd=cwd,
-                            text=False)  # Get bytes first
-
-    # Decode the output properly
-    stdout = _decode_output(result.stdout, encodings)
-    stderr = _decode_output(result.stderr, encodings)
-    success = (result.returncode == 0)
-    
-    if change_directory and success:
-        path = command[1] if isinstance(command, list) and len(command) > 1 else command[3:] if isinstance(command, str) and command.startswith("cd ") else ""
-        cwd = os.path.abspath(os.path.join(cwd, path))
-    
-    return command_result(
-        success = success,
-        stdout = stdout, 
-        stderr = stderr, 
-        returncode = result.returncode,
-        current_directory = cwd
-    )
+        # Decode the output properly
+        stdout = _decode_output(result.stdout, encodings)
+        stderr = _decode_output(result.stderr, encodings)
+        success = (result.returncode == 0)
+        
+        if change_directory and success:
+            path = command[1] if len(command) > 1 else ""
+            cwd = os.path.abspath(os.path.join(cwd, path))
+        
+        return command_result(
+            success = success,
+            stdout = stdout, 
+            stderr = stderr, 
+            returncode = result.returncode,
+            current_directory = cwd
+        )
+    except Exception as e:
+        return command_result(
+            success = False,
+            stdout = "",
+            stderr = str(e),
+            returncode = 1,
+            current_directory = cwd
+        )
 
 def terminal_run_command_and_print(command : list[str] | str, cwd : str = os.getcwd()) -> None:
     result = terminal_run_command(command, cwd=cwd)
