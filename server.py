@@ -7,22 +7,6 @@ mcp = FastMCP("Terminal MCP", "1.0.2")
 current_directory = os.getcwd() # Initialize with the current working directory
 
 @mcp.tool()
-def change_directory(path: str) -> command_result:
-    """
-    Changes the current working directory.
-    
-    Args:
-        path (str): The path to change to.
-        
-    Returns:
-        command_result: The result of the change directory command.
-    """
-    global current_directory 
-    result = terminal_run_command(["cd", path], cwd=current_directory, change_directory=True)
-    current_directory = result.current_directory  # Update the global current directory
-    return result
-
-@mcp.tool()
 def run_command(command: list[str] | str) -> command_result:
     """
     Runs a command in the terminal and returns the result.
@@ -38,9 +22,25 @@ def run_command(command: list[str] | str) -> command_result:
     command = command if isinstance(command, list) else shlex.split(command) # Ensure command is a list
     if command[0] == "cd":
         path = command[1] if len(command) > 1 else ""
-        return change_directory(path)
+        return change_working_directory(path)
     else:
         return terminal_run_command(command, current_directory, change_directory=False)
+
+@mcp.tool()
+def change_working_directory(path: str) -> command_result:
+    """
+    Changes the current working directory.
+    
+    Args:
+        path (str): The path to change to.
+        
+    Returns:
+        command_result: The result of the change directory command.
+    """
+    global current_directory 
+    result = terminal_run_command(["cd", path], cwd=current_directory, change_directory=True)
+    current_directory = result.current_directory  # Update the global current directory
+    return result
 
 @mcp.tool()
 def get_current_directory() -> str:
@@ -53,6 +53,36 @@ def get_current_directory() -> str:
     global current_directory 
     return current_directory
 
+@mcp.tool()
+def create_directory(directory_path: str) -> command_result:
+    """
+    Creates a directory at the specified path.
+    
+    Args:
+        directory_path (str): The path to the directory to create.
+        
+    Returns:
+        command_result: The result of the directory creation command.
+    """
+    try:
+        global current_directory
+        directory_path = os.path.join(current_directory, directory_path)
+        os.makedirs(directory_path, exist_ok=True)
+        return command_result(
+            success=True,
+            stdout=f"Directory '{directory_path}' created successfully.",
+            stderr="",
+            returncode=0,
+            current_directory=current_directory
+        )
+    except Exception as e:
+        return command_result(
+            success=False,
+            stdout="",
+            stderr=str(e),
+            returncode=1,
+            current_directory=current_directory
+        )
 
 @mcp.tool()
 def create_file(file_path: str, content: str) -> command_result:
