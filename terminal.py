@@ -43,13 +43,19 @@ def _decode_output(output_bytes, encoding_candidates : list[str] = [] ):
 def terminal_run_command(command : list[str] | str, cwd : str = os.getcwd(), change_directory : bool = False) -> command_result:
     encodings = _get_encoding_candidates()
     try:
-        command = command if isinstance(command, list) else shlex.split(command) # Ensure command is a list
-        # First try with the detected encoding
-        result = subprocess.run(command, 
-                                shell=True, 
+
+        command = command if isinstance(command, list) else shlex.split(command)
+        command_str = ' '.join(part for part in command)
+        
+        result = subprocess.run(command_str, 
+                                shell=True,
+                                env=os.environ,
+                                stdin=subprocess.DEVNULL,
+                                check=False,
                                 capture_output=True,
+                                #executable="powershell" if sys.platform == "win32" else "/bin/bash",
                                 cwd=cwd,
-                                text=False)  # Get bytes first
+                                text=False)
 
         # Decode the output properly
         stdout = _decode_output(result.stdout, encodings)
@@ -59,7 +65,7 @@ def terminal_run_command(command : list[str] | str, cwd : str = os.getcwd(), cha
         if change_directory and success:
             path = command[1] if len(command) > 1 else ""
             cwd = os.path.abspath(os.path.join(cwd, path))
-        
+
         return command_result(
             success = success,
             stdout = stdout, 
