@@ -10,12 +10,12 @@
 
 - 🛡️ **Secure Execution** - Commands run with user-level permissions only
 - 🌍 **Cross-Platform** - Works seamlessly on Windows, macOS, and Linux
-- 🔤 **Smart Encoding** - Handles international characters (Korean, Chinese, etc.)
+- 🔤 **Smart Encoding** - Handles international characters with multiple encoding detection
 - 📊 **Structured Results** - Returns detailed command output with status codes
-- 🎯 **Directory Tracking** - Maintains current working directory state
-- 📁 **File Operations** - Create, read, and delete files directly
+- 🎯 **Directory Tracking** - Maintains current working directory state across operations
+- 📁 **File Operations** - Create, read, and delete files with UTF-8 encoding
 - 📂 **Directory Management** - Create directories and navigate file system
-- ⚡ **Fast Integration** - Quick setup with Claude Desktop
+- ⚡ **Fast Integration** - Quick setup with Claude Desktop using uvx
 
 ## 🚀 Quick Start
 
@@ -27,11 +27,12 @@
 
 ### Installation
 
-1. **Clone and setup the project:**
+The project uses modern Python packaging with uvx, so no manual installation is required:
+
+1. **Clone the repository:**
    ```bash
    git clone <repository-url>
    cd mcp-terminal
-   uv sync
    ```
 
 2. **Configure Claude Desktop:**
@@ -44,7 +45,7 @@
    | macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
    | Linux | `~/.config/Claude/claude_desktop_config.json` |
 
-   Add this configuration:
+   Add this configuration (replace with your absolute path):
    ```json
    {
      "mcpServers": {
@@ -89,18 +90,22 @@ You: "Create a new directory called 'projects'"
 Claude: [Creates the directory using create_directory tool]
 ```
 
-## 🏗️ Architecture
+## 🏗️ Project Structure
 
 ```
 mcp-terminal/
-├── 📄 main.py                    # MCP server entry point
-├── 🖥️ server.py                  # FastMCP server with tools
-├── 🔧 terminal.py                # Command execution engine
-├── 📦 pyproject.toml            # Dependencies & metadata
-├── ⚙️ claude_desktop_config.json # Claude integration config
-├── 🐍 .python-version           # Python version lock
-├── 📁 .venv/                   # Virtual environment
-└── 📚 README.md                # Documentation
+├── 📄 README.md                        # This documentation
+├── 📦 pyproject.toml                  # Project configuration and dependencies
+├── 🔐 LICENSE                         # MIT License
+├── 🐍 .python-version                 # Python version requirement (3.13)
+├── 🔒 uv.lock                         # Dependency lock file
+├── ⚙️ claude_desktop_config.json      # Example Claude Desktop configuration
+├── 🙈 .gitignore                      # Git ignore rules
+└── 📁 src/terminal/                   # Source code directory
+    ├── 📄 __init__.py                 # Package initialization
+    ├── 🚀 main.py                     # MCP server entry point
+    ├── 🖥️ server.py                   # FastMCP server with tools
+    └── 🔧 terminal.py                 # Command execution engine
 ```
 
 ## 🔌 API Reference
@@ -115,6 +120,18 @@ Executes terminal commands with full output capture. Automatically handles `cd` 
 
 **Returns:**
 - `command_result` object with execution details
+
+**Example:**
+```python
+# As string
+run_command("ls -la")
+
+# As list
+run_command(["git", "status"])
+
+# Directory changes are handled automatically
+run_command("cd ../Documents")
+```
 
 #### `change_working_directory(path: str) -> command_result`
 Changes the current working directory with state persistence across tool calls.
@@ -134,7 +151,7 @@ Returns the current working directory path.
 ### File Operations
 
 #### `create_file(file_path: str, content: str) -> command_result`
-Creates a new file with specified content. Automatically creates parent directories if needed.
+Creates a new file with specified content using UTF-8 encoding. Automatically creates parent directories if needed.
 
 **Parameters:**
 - `file_path`: Path to the file to create (relative to current directory)
@@ -144,7 +161,7 @@ Creates a new file with specified content. Automatically creates parent director
 - `command_result` object with creation status
 
 #### `read_file(file_path: str) -> command_result`
-Reads and returns the content of a file.
+Reads and returns the content of a file using UTF-8 encoding.
 
 **Parameters:**
 - `file_path`: Path to the file to read (relative to current directory)
@@ -153,7 +170,7 @@ Reads and returns the content of a file.
 - `command_result` object with file content in stdout
 
 #### `delete_file(file_path: str) -> command_result`
-Deletes a specified file.
+Deletes a specified file with existence checking.
 
 **Parameters:**
 - `file_path`: Path to the file to delete (relative to current directory)
@@ -164,7 +181,7 @@ Deletes a specified file.
 ### Directory Operations
 
 #### `create_directory(directory_path: str) -> command_result`
-Creates a new directory at the specified path.
+Creates a new directory at the specified path with `exist_ok=True`.
 
 **Parameters:**
 - `directory_path`: Path to the directory to create (relative to current directory)
@@ -174,35 +191,22 @@ Creates a new directory at the specified path.
 
 ### Response Format
 
-All tools return a `command_result` object with the following structure:
+All tools return a `command_result` Pydantic model with the following structure:
 
 ```python
-{
-    "success": bool,              # True if operation succeeded
-    "stdout": str,                # Standard output or result content
-    "stderr": str,                # Error output if any
-    "returncode": int,            # Exit code (0 = success)
-    "current_directory": str      # Current working directory after operation
-}
+class command_result(BaseModel):
+    success: bool = False              # True if operation succeeded
+    stdout: str = ""                   # Standard output or result content
+    stderr: str = ""                   # Error output if any
+    returncode: int = 1                # Exit code (0 = success)
+    current_directory: str = os.getcwd()  # Current working directory after operation
 ```
 
 ## 🔧 Development
 
-### Running Tests
+### Testing the Server
 
-Test the terminal functionality directly:
-
-```bash
-# Basic functionality test
-python -c "from terminal import terminal_run_command; print(terminal_run_command('echo Hello World'))"
-
-# Interactive testing
-python -c "from terminal import terminal_run_command_and_print; terminal_run_command_and_print('ls -la')"
-```
-
-### Testing MCP Server
-
-Test the server directly:
+Test the server directly using uvx:
 
 ```bash
 # Run the server
@@ -212,9 +216,29 @@ uvx --from . mcp-terminal
 npx @modelcontextprotocol/inspector uvx --from . mcp-terminal
 ```
 
+### Testing Terminal Functions
+
+Test the terminal functionality directly:
+
+```bash
+# Test basic command execution
+python -c "
+from src.terminal.terminal import terminal_run_command
+result = terminal_run_command('echo Hello World')
+print(f'Success: {result.success}')
+print(f'Output: {result.stdout}')
+"
+
+# Test with debug output
+python -c "
+from src.terminal.terminal import terminal_run_command_and_print
+terminal_run_command_and_print('dir' if sys.platform == 'win32' else 'ls -la')
+"
+```
+
 ### Extending the Server
 
-Add new tools to `server.py`:
+Add new tools to `src/terminal/server.py`:
 
 ```python
 @mcp.tool()
@@ -248,16 +272,12 @@ def my_custom_tool(param: str) -> command_result:
         )
 ```
 
-### Debug Mode
+### Architecture Details
 
-For troubleshooting command execution:
-
-```python
-from terminal import terminal_run_command_and_print
-
-# This will print detailed output for debugging
-terminal_run_command_and_print("your-command-here")
-```
+- **Entry Point**: `src/terminal/main.py` initializes and runs the FastMCP server
+- **Server Logic**: `src/terminal/server.py` defines all MCP tools and manages global state
+- **Terminal Engine**: `src/terminal/terminal.py` handles command execution with robust encoding detection
+- **Package Script**: Configured in `pyproject.toml` as `mcp-terminal = "terminal.main:main"`
 
 ## 🐛 Troubleshooting
 
@@ -265,12 +285,13 @@ terminal_run_command_and_print("your-command-here")
 
 | Issue | Solution |
 |-------|----------|
-| **Encoding errors with international characters** | System automatically detects encoding, but verify your locale settings |
-| **Permission denied errors** | Ensure Python has necessary permissions for the commands you're running |
+| **Encoding errors with international characters** | The system uses multiple encoding detection algorithms - check your locale settings |
+| **Permission denied errors** | Ensure the process has necessary permissions for the commands you're running |
 | **Command not found** | Verify the command exists in your system PATH |
-| **Claude Desktop not connecting** | Check config path is absolute, restart Claude Desktop, verify uv is in PATH |
-| **File not found errors** | Check file paths are relative to current directory or use absolute paths |
+| **Claude Desktop not connecting** | Check config path is absolute, restart Claude Desktop, verify uvx is in PATH |
+| **File not found errors** | File paths are relative to current directory - use absolute paths if needed |
 | **Directory creation fails** | Verify parent directory exists and you have write permissions |
+| **uvx command fails** | Ensure uv is installed and up to date |
 
 ### Getting Help
 
@@ -278,29 +299,22 @@ terminal_run_command_and_print("your-command-here")
 2. **Verify paths** - Ensure all paths in config are absolute and correct
 3. **Test manually** - Run `uvx --from . mcp-terminal` to test the server directly
 4. **Check permissions** - Verify file and directory permissions
-5. **Test file operations** - Use the debug functions to test file operations directly
+5. **Test encoding** - Use the debug functions to test command execution directly
+
+### Debug Mode
+
+For troubleshooting command execution:
+
+```python
+from src.terminal.terminal import terminal_run_command_and_print
+
+# This will print detailed output for debugging
+terminal_run_command_and_print("your-command-here")
+```
 
 ## 🚀 Advanced Configuration
 
-### Custom Python Installation
-
-If not using uv, modify the Claude Desktop config:
-
-```json
-{
-  "mcpServers": {
-    "Terminal Server": {
-      "command": "python",
-      "args": ["/absolute/path/to/mcp-terminal/main.py"],
-      "env": {
-        "PYTHONPATH": "/absolute/path/to/mcp-terminal"
-      }
-    }
-  }
-}
-```
-
-### Environment Variables
+### Custom Environment Variables
 
 Set custom environment variables for the server:
 
@@ -319,32 +333,67 @@ Set custom environment variables for the server:
 }
 ```
 
+### Alternative Installation Methods
+
+If you prefer not to use uvx, you can install dependencies manually:
+
+```bash
+# Install with uv
+uv sync
+
+# Run with uv directly
+uv run python -m terminal.main
+
+# Or install with pip and run with Python
+pip install -e .
+python -m terminal.main
+```
+
+Then update your Claude Desktop config:
+
+```json
+{
+  "mcpServers": {
+    "Terminal Server": {
+      "command": "python",
+      "args": ["-m", "terminal.main"],
+      "cwd": "/absolute/path/to/mcp-terminal"
+    }
+  }
+}
+```
+
 ### Security Considerations
 
 - Commands run with the same permissions as the MCP server process
 - File operations are limited to areas accessible by the user account
 - No privilege escalation is performed
-- Directory traversal is handled by Python's path resolution
+- Directory traversal is handled by Python's `os.path.join()` and `os.path.abspath()`
+- UTF-8 encoding is enforced for file operations to prevent encoding attacks
 
 ## 📝 Changelog
 
 ### v1.0.2 (Current)
-- ✨ Added file operations: `create_file`, `read_file`, `delete_file`
+- ✨ Added comprehensive file operations: `create_file`, `read_file`, `delete_file`
 - ✨ Added directory operations: `create_directory`
 - ✨ Enhanced directory state management across all operations
 - ✨ Improved error handling for file system operations
-- 🔧 Better path resolution for relative paths
+- ✨ UTF-8 encoding enforcement for file operations
+- 🔧 Better path resolution using `os.path.join()` for cross-platform compatibility
+- 🔧 Automatic parent directory creation for file operations
 
 ### v1.0.1
-- ✨ Directory state management
-- ✨ Added tools: `change_directory`, `get_current_directory`
-- ✨ Renamed tool: `run_command_tools` → `run_command`
+- ✨ Directory state management with global current_directory tracking
+- ✨ Added tools: `change_working_directory`, `get_current_directory`
+- ✨ Automatic `cd` command routing to directory change tool
+- 🔧 Enhanced command parsing with `shlex.split()`
 
 ### v1.0.0 
-- ✨ Initial release
+- ✨ Initial release with FastMCP integration
 - ✨ Cross-platform terminal command execution
+- ✨ Multi-encoding detection for international character support
+- ✨ Structured command results with Pydantic models
 - ✨ MCP server integration with Claude Desktop
-- ✨ Smart encoding detection for international characters
 
 ## 🤝 Contributing
 
@@ -363,19 +412,21 @@ We welcome contributions! Here's how to get started:
 git clone https://github.com/your-username/mcp-terminal.git
 cd mcp-terminal
 
-# Setup development environment
-uv sync --dev
+# Test the installation
+uvx --from . mcp-terminal
 
-# Run tests (when available)
-uv run pytest
+# For development with dependencies
+uv sync
 ```
 
 ### Code Style
 
 - Follow Python PEP 8 style guidelines
 - Use type hints for function parameters and return values
-- Document all public functions with docstrings
+- Document all public functions with comprehensive docstrings
 - Handle errors gracefully and return appropriate `command_result` objects
+- Use Pydantic models for structured data
+- Maintain cross-platform compatibility
 
 ## 📄 License
 
@@ -385,7 +436,8 @@ This project is open source and available under the [MIT License](LICENSE).
 
 - [Model Context Protocol](https://modelcontextprotocol.io) for the excellent specification
 - [Anthropic](https://anthropic.com) for Claude and the MCP ecosystem
-- [FastMCP](https://github.com/jlowin/fastmcp) for the server framework
+- [FastMCP](https://github.com/jlowin/fastmcp) for the lightweight server framework
+- [uv](https://docs.astral.sh/uv/) for modern Python package management
 
 ---
 
