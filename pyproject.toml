@@ -9,4 +9,4 @@ dependencies = [
     "pydantic>=2.11.7",
 ]
 [project.scripts]
-mcp-terminal = "terminal.main:main"
+mcp-terminal = "terminal.__main__:main"
