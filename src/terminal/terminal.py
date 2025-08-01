@@ -47,6 +47,9 @@ def terminal_run_command(command : list[str] | str, cwd : str = os.getcwd(), cha
         command = command if isinstance(command, list) else shlex.split(command)
         command_str = ' '.join(part for part in command)
         
+        if sys.platform == "win32":
+            command_str = "powershell -Command " + command_str
+        
         result = subprocess.run(command_str, 
                                 shell=True,
                                 env=os.environ,
