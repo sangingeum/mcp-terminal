@@ -49,12 +49,11 @@
    {
      "mcpServers": {
        "Terminal Server": {
-         "command": "uv",
+         "command": "uvx",
          "args": [
-           "run",
-           "--directory",
+           "--from",
            "/absolute/path/to/mcp-terminal",
-           "main.py"
+           "mcp-terminal"
          ]
        }
      }
@@ -207,10 +206,10 @@ Test the server directly:
 
 ```bash
 # Run the server
-uv run main.py
+uvx --from . mcp-terminal
 
 # Test with MCP inspector (if available)
-npx @modelcontextprotocol/inspector uv run main.py
+npx @modelcontextprotocol/inspector uvx --from . mcp-terminal
 ```
 
 ### Extending the Server
@@ -277,7 +276,7 @@ terminal_run_command_and_print("your-command-here")
 
 1. **Check the logs** - Look for error messages in Claude Desktop console
 2. **Verify paths** - Ensure all paths in config are absolute and correct
-3. **Test manually** - Run `uv run main.py` to test the server directly
+3. **Test manually** - Run `uvx --from . mcp-terminal` to test the server directly
 4. **Check permissions** - Verify file and directory permissions
 5. **Test file operations** - Use the debug functions to test file operations directly
 
@@ -309,8 +308,8 @@ Set custom environment variables for the server:
 {
   "mcpServers": {
     "Terminal Server": {
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/mcp-terminal", "main.py"],
+      "command": "uvx",
+      "args": ["--from", "/path/to/mcp-terminal", "mcp-terminal"],
       "env": {
         "CUSTOM_VAR": "value",
         "PATH": "/custom/path:$PATH"
