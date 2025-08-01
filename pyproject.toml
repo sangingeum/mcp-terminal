@@ -1,6 +1,6 @@
 [project]
 name = "mcp-terminal"
-version = "0.1.0"
+version = "1.0.2"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -8,3 +8,5 @@ dependencies = [
     "mcp[cli]>=1.12.2",
     "pydantic>=2.11.7",
 ]
+[project.scripts]
+mcp-terminal = "terminal.main:main"

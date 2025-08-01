@@ -1,7 +1,7 @@
 import os
 import shlex
 from mcp.server.fastmcp import FastMCP
-from terminal import terminal_run_command, command_result
+from .terminal import terminal_run_command, command_result
 
 mcp = FastMCP("Terminal MCP", "1.0.2")
 current_directory = os.getcwd() # Initialize with the current working directory
